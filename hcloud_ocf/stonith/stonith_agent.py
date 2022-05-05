@@ -6,8 +6,9 @@
 #   (c) 2018Sven Speckmaier
 
 import time
-import stonith
-import shared
+from ..pacemaker.stonith import Parameter
+from ..pacemaker.stonith import ReturnCodes
+from ..hcloud.hostfinder import HostnameHostFinder
 from hetznercloud import HetznerCloudClientConfiguration, HetznerCloudClient, \
         ACTION_STATUS_SUCCESS, SERVER_STATUS_STOPPING
 from hetznercloud.servers import HetznerCloudServer, SERVER_STATUS_OFF
@@ -22,7 +23,7 @@ class FindHostException(Exception):
 
 class Stonith():
     def __init__(self):
-        self.sleep = stonith.Parameter('sleep', default="5", shortDescription='Time in seconds to sleep on failed api requests' ,
+        self.sleep = Parameter('sleep', default="5", shortDescription='Time in seconds to sleep on failed api requests' ,
                 description='''
                 If a request to the hetzner api fails then the device will retry the request after the number of
                 seconds specified here, or 5 second by default.
@@ -36,7 +37,7 @@ class Stonith():
                 a request is denied by the api the token was most likely deleted
                 ''',
                 required=False, unique=False)
-        self.apiToken = stonith.Parameter('api_token', shortDescription='Hetner Cloud api token' ,
+        self.apiToken = Parameter('api_token', shortDescription='Hetner Cloud api token' ,
                 description='''
                 The Hetzner Cloud api token with which the ip address can be managed.
 
@@ -45,7 +46,7 @@ class Stonith():
                 Activate the second tab `Api Tokens` and create a new token.
                 ''',
                 required=True, unique=False)
-        self.hostnameToApi = stonith.Parameter('hostname_to_api', shortDescription='hostname:apiname - only match the given hostname, reset the server with the given api name' ,
+        self.hostnameToApi = Parameter('hostname_to_api', shortDescription='hostname:apiname - only match the given hostname, reset the server with the given api name' ,
                 description='''
                 When this parameter is given then the stonith device switches to a different mode.
                 Format: hostname:apiname[,hostname2:apiname2]
@@ -61,7 +62,7 @@ class Stonith():
                 -> hostnames can be mapped to server names in the api
                 ''',
                 required=False, unique=False)
-        self.failOnHostfindFailure = stonith.Parameter('fail_on_host_find_failure', shortDescription='Exit with misconfigured if the host was not found' ,
+        self.failOnHostfindFailure = Parameter('fail_on_host_find_failure', shortDescription='Exit with misconfigured if the host was not found' ,
                 description='''
                 If this is set to true then failing to find a host will cause the agent to exit
                 with a Missconfigured error - usually a fatal exit code preventing the resource
@@ -86,11 +87,11 @@ class Stonith():
             for hostToApi in hostlist:
                 hostname, apiname = hostToApi.split(':')
                 if hostname == host:
-                    self.hostFinder = shared.HostnameHostFinder(apiname)
+                    self.hostFinder = HostnameHostFinder(apiname)
                     return
             raise KeyError
             return
-        self.hostFinder = shared.HostnameHostFinder(host)
+        self.hostFinder = HostnameHostFinder(host)
 
     def populated(self):
         if not self.apiToken.get():
@@ -108,7 +109,7 @@ class Stonith():
                 host.split(':')
                 hostnames.append(host[0])
             print( ' '.join(hostnames) )
-            return stonith.ReturnCodes.success
+            return ReturnCodes.success
                 
             
         success = False
@@ -133,7 +134,7 @@ class Stonith():
 
         print( ' '.join(hostnames) )
             
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def powerOn(self):
         try: 
@@ -162,9 +163,9 @@ class Stonith():
 
         except HetznerAuthenticationException:
             print('Error: Cloud Api returned Authentication error. Token deleted?')
-            return stonith.ReturnCodes.isMissconfigured
+            return ReturnCodes.isMissconfigured
 
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def powerOff(self):
         try:
@@ -175,10 +176,10 @@ class Stonith():
                     if self.host.status == SERVER_STATUS_STOPPING:
                         self.host.wait_until_status_is(SERVER_STATUS_OFF, \
                            attempts=5, wait_seconds=self.wait)
-                        return stonith.ReturnCodes.success
+                        return ReturnCodes.success
 
                     if self.host.status == SERVER_STATUS_OFF:
-                        return stonith.ReturnCodes.success
+                        return ReturnCodes.success
 
                     powerOffAction = self.host.power_off()
                     powerOffAction.wait_until_status_is(ACTION_STATUS_SUCCESS, \
@@ -199,9 +200,9 @@ class Stonith():
 
         except HetznerAuthenticationException:
             print('Error: Cloud Api returned Authentication error. Token deleted?')
-            return stonith.ReturnCodes.isMissconfigured
+            return ReturnCodes.isMissconfigured
 
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def powerReset(self):
         try:
@@ -212,10 +213,10 @@ class Stonith():
                     if self.host.status == SERVER_STATUS_STOPPING:
                         self.host.wait_until_status_is(ACTION_STATUS_OFF, \
                                attempts=5, wait_seconds=self.wait)
-                        return stonith.ReturnCodes.success
+                        return ReturnCodes.success
                         
                     if self.host.status == SERVER_STATUS_OFF:
-                        return stonith.ReturnCodes.success
+                        return ReturnCodes.success
 
                     resetAction  = self.host.reset()
                     resetAction.wait_until_status_is(ACTION_STATUS_SUCCESS, \
@@ -236,16 +237,16 @@ class Stonith():
 
         except HetznerAuthenticationException:
             print('Error: Cloud Api returned Authentication error. Token deleted?')
-            return stonith.ReturnCodes.isMissconfigured
+            return ReturnCodes.isMissconfigured
 
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def status(self):
         try: 
             self.findServer()
         except FindHostException as e:
             return e.code
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     
     def findServer(self):
@@ -268,21 +269,21 @@ class Stonith():
 
         except HetznerAuthenticationException:
             print('Error: Cloud Api returned Authentication error. Token deleted?')
-            raise FindHostException(stonith.ReturnCodes.isMissconfigured)
+            raise FindHostException(ReturnCodes.isMissconfigured)
 
         return self.host
 
     def infoId(self):
         print ("hetzner_cloud")
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def infoName(self):
         print ("hetzner_cloud")
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def infoUrl(self):
         print ("https://github.com/svensp/hcloud_ocf")
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success
 
     def infoDescription(self):
         print ('''
@@ -293,4 +294,4 @@ class Stonith():
         hostname_to_api paramter.
         Format: hostname:apiname[,hostname2:apiname2]
         ''')
-        return stonith.ReturnCodes.success
+        return ReturnCodes.success

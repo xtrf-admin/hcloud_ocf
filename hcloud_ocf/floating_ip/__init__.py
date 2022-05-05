@@ -1,3 +1,4 @@
+
 #!/bin/python3
 #
 #   Resource Agent for managing hetzner cloud ips
@@ -6,20 +7,22 @@
 #   (c) 2018Sven Speckmaier
 
 import sys
-import ocf
-import floating_ip
+from ..pacemaker.ocf import AgentRunner
+from ..pacemaker.ocf import Api
+from ..pacemaker.ocf import ReturnCodes
+from .floating_ip import FloatingIp
 import traceback
 
-if __name__ == '__main__':
-    application = ocf.AgentRunner()
-    resourceAgent = floating_ip.FloatingIp()
-    api = ocf.Api()
+def main():
+    application = AgentRunner()
+    resourceAgent = FloatingIp()
+    api = Api()
 
     try:
         action = api.action()
     except AssertionError:
         print("Error: Missing action")
-        sys.exit( ocf.ReturnCodes.invalidArguments )
+        sys.exit( ReturnCodes.invalidArguments )
 
 
     try:
@@ -32,5 +35,9 @@ if __name__ == '__main__':
         filename, line, func, text = tb_info[-1]
 
         print('An error occurred on line {} in statement {}'.format(line, text))
-        code = ocf.ReturnCodes.isMissconfigured
+        code = ReturnCodes.isMissconfigured
     sys.exit( code )
+
+
+if __name__ == '__main__':
+    main()

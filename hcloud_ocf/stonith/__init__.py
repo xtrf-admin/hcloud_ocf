@@ -7,11 +7,11 @@
 
 import sys
 import stonith
-import stonith_agent
+from .stonith_agent import Stonith
 
-if __name__ == '__main__':
+def main():
     application = stonith.Runner()
-    resourceAgent = stonith_agent.Stonith()
+    resourceAgent = Stonith()
     api = stonith.Api()
 
     try:
@@ -26,3 +26,6 @@ if __name__ == '__main__':
     except AssertionError:
         code = stonith.ReturnCodes.isMissconfigured
     sys.exit( code )
+
+if __name__ == '__main__':
+    main()
